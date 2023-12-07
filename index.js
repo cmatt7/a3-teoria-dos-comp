@@ -4,7 +4,7 @@
  * @returns Análise léxica
  */
 function lexica(input) {
-    const regex = /\s*([0-9]+|\S)\s*/g;
+    const regex = /\s*([+\-*/()]|\d+)\s*/g;
     const tokens = [];
     let match;
 
@@ -26,7 +26,7 @@ function parser(tokens) {
     function parseNumber() {
         const token = tokens[index];
 
-        if (!token.match(/[0-9]+/)) {
+        if (!token.match(/\d+/)) {
             throw new Error(`Token inválido: ${token}`);
         }
 
@@ -35,21 +35,29 @@ function parser(tokens) {
     }
 
     function parseFactor() {
-        let result = parseNumber();
+        if (tokens[index] === '(') {
+            index++;
+            const result = parseExpression();
+            if (tokens[index] !== ')') {
+                throw new Error('Parênteses não fechados corretamente.');
+            }
+            index++;
+            return result;
+        } else {
+            return parseNumber();
+        }
+    }
+
+    function parseTerm() {
+        let result = parseFactor();
 
         while (index < tokens.length) {
             const operator = tokens[index];
 
-            if (operator === '*') {
+            if (operator === '*' || operator === '/') {
                 index++;
-                result *= parseNumber();
-            } else if (operator === '/') {
-                index++;
-                const divisor = parseNumber();
-                if (divisor === 0) {
-                    throw new Error('Divisão por zero não permitida.');
-                }
-                result /= divisor;
+                const nextFactor = parseFactor();
+                result = operator === '*' ? result * nextFactor : result / nextFactor;
             } else {
                 break;
             }
@@ -59,17 +67,15 @@ function parser(tokens) {
     }
 
     function parseExpression() {
-        let result = parseFactor();
+        let result = parseTerm();
 
         while (index < tokens.length) {
             const operator = tokens[index];
 
-            if (operator === '+') {
+            if (operator === '+' || operator === '-') {
                 index++;
-                result += parseFactor();
-            } else if (operator === '-') {
-                index++;
-                result -= parseFactor();
+                const nextTerm = parseTerm();
+                result = operator === '+' ? result + nextTerm : result - nextTerm;
             } else {
                 break;
             }
@@ -96,7 +102,7 @@ function semantica(input) {
 /**
  * Àrea de testes
  */
-const expressao = '2 * 4 + 3 - 6 / 2';
+const expressao = '(3 + 4) * 2 - 6 / 2';
 const resultado = semantica(expressao);
 console.log(`
     Resultado da expressão\n
